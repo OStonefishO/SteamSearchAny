@@ -174,7 +174,8 @@ function percentileRanks(cosMap) {
  * @param {{limit?:number, exclude?:number[], tagId?:number, minReviews?:number, pool?:string}} opts
  */
 export function findSimilar(seeds, opts = {}) {
-  const { limit = 24, exclude = [], tagId = null, minReviews = 0, maxReviews = 0 } = opts;
+  const { limit = 24, exclude = [], tagIds = [], minReviews = 0, maxReviews = 0 } = opts;
+  const wantTags = (tagIds || []).map(Number).filter((n) => n > 0);
   if (!state.ready) return { ok: false, error: 'INDEX_NOT_READY', results: [], seeds: [] };
   if (!seeds.length) return { ok: false, error: 'NO_SEEDS', results: [], seeds: [] };
 
@@ -196,7 +197,10 @@ export function findSimilar(seeds, opts = {}) {
     if (exclude.includes(appid)) continue;
     const rec = state.games.get(appid);
     if (!rec) continue;
-    if (tagId && !rec.tags.some((t) => t.id === tagId)) continue;
+    if (wantTags.length) {
+      const have = new Set(rec.tags.map((t) => t.id));
+      if (!wantTags.every((id) => have.has(id))) continue;
+    }
     if (minReviews && (rec.rev?.total ?? 0) < minReviews) continue;
     if (maxReviews && (rec.rev?.total ?? 0) > maxReviews) continue;
 
@@ -279,11 +283,15 @@ export function isGem(rec, { minPct = 78, maxReviews = 60000, minReviews = 12 } 
   return total >= minReviews && total <= maxReviews && pct >= minPct;
 }
 
-/** 盲盒候选池 */
-export function randomPool({ mode = 'gem', tagId = null, minYear = null, maxYear = null } = {}) {
+/** 盲盒候选池（tagIds 为 AND 语义：必须同时带这些标签） */
+export function randomPool({ mode = 'gem', tagIds = [], minYear = null, maxYear = null } = {}) {
+  const want = (tagIds || []).map(Number).filter((n) => n > 0);
   const out = [];
   for (const g of state.games.values()) {
-    if (tagId && !(g.tags ?? []).some((t) => t.id === Number(tagId))) continue;
+    if (want.length) {
+      const have = new Set((g.tags ?? []).map((t) => t.id));
+      if (!want.every((id) => have.has(id))) continue;
+    }
     if (minYear && (g.year ?? 0) < minYear) continue;
     if (maxYear && (g.year ?? 9999) > maxYear) continue;
     if (mode === 'gem') {

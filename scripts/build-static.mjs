@@ -36,8 +36,9 @@ async function build() {
     for (const [tid] of tags) if (!tagDict[tid]) tagDict[tid] = corpus.tagDict?.[tid]?.zh ?? `标签${tid}`;
     if (g.rev?.label) labelSet.add(g.rev.label);
 
-    const alt = altName.get(g.id);
-    const altOut = alt && alt.toLowerCase() !== String(g.name).toLowerCase() ? alt : null;
+    // 英文名：优先用回填的官方英文名，其次用快照原名
+    const en = g.en || altName.get(g.id) || null;
+    const altOut = en && String(en).toLowerCase() !== String(g.name).toLowerCase() ? en : null;
 
     games.push([
       g.id,
@@ -50,6 +51,7 @@ async function build() {
       g.price ?? null,
       g.free ? 1 : 0,
       altOut,
+      g.desc ? String(g.desc).slice(0, 220) : null,
     ]);
   }
 
@@ -100,17 +102,19 @@ async function build() {
     console.warn('字体目录缺失，跳过（不影响功能，只是西文字体回落系统字体）');
   }
 
-  // index.html：改成相对路径 + 打开静态开关 + 在 app.js 之前挂上本地引擎
+  // index.html：改成相对路径 + 打开静态开关 + 在 app.js 之前挂上本地引擎 + 资源加版本号（防缓存）
   let html = await fs.readFile(path.join(PUB, 'index.html'), 'utf8');
+  const v = encodeURIComponent(version.v);
   html = html
     .replace(/(["'(])\/(style\.css|app\.js|local-api\.js|avatar\.jpg)/g, '$1$2')
+    .replace('href="style.css"', `href="style.css?v=${v}"`)
+    .replace('src="local-api.js"', `src="local-api.js?v=${v}"`)
     .replace(
       '<script src="app.js" type="module"></script>',
       `<script>window.LIGHTHOUSE_STATIC = true;</script>
-<script src="local-api.js"></script>
-<script src="app.js" type="module"></script>`
+<script src="local-api.js?v=${v}"></script>
+<script src="app.js?v=${v}" type="module"></script>`
     )
-    .replace('<title>', '<title>')
     .replace(
       '</head>',
       `  <meta property="og:title" content="Steam 灯塔 · 找到没人注意到的那些游戏">

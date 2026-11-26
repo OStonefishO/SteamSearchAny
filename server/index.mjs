@@ -86,10 +86,12 @@ async function searchGames(q, limit = 12) {
     }
   };
 
-  // 本地化名（语料库优先展示）
+  // 本地化名 + 官方英文名（语料库优先展示）
   for (const [id] of (await ensureNameIndex())) {
     const rec = getGame(id);
-    if (rec) consider(id, rec.name, true);
+    if (!rec) continue;
+    consider(id, rec.name, true);
+    if (rec.en) consider(id, rec.en, true);
   }
   // 英文/快照名（覆盖语料库外的 13 万条）
   const idx = await ensureNameIndex();
@@ -122,7 +124,8 @@ async function serveStatic(req, res, urlPath) {
     const ext = path.extname(file).toLowerCase();
     res.writeHead(200, {
       'Content-Type': MIME[ext] ?? 'application/octet-stream',
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600',
+      // 本地服务是开发用：脚本样式一律重新校验，避免改了前端看不到效果
+      'Cache-Control': ext === '.woff2' || ext === '.jpg' || ext === '.png' ? 'public, max-age=86400' : 'no-cache',
     });
     res.end(buf);
   } catch {
@@ -194,8 +197,10 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/random') {
       const mode = url.searchParams.get('mode') || 'gem';
-      const tagParam = url.searchParams.get('tag');
-      const tagId = tagParam ? Number(tagParam) : null;
+      const tagIds = (url.searchParams.get('tags') || url.searchParams.get('tag') || '')
+        .split(',')
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0);
       const count = Math.min(48, Number(url.searchParams.get('count')) || 1);
       const exclude = (url.searchParams.get('exclude') || '')
         .split(',')
@@ -203,14 +208,14 @@ const server = http.createServer(async (req, res) => {
         .filter(Boolean);
       const minYear = Number(url.searchParams.get('minYear')) || null;
 
-      const pool = randomPool({ mode, tagId, minYear });
+      const pool = randomPool({ mode, tagIds, minYear });
       if (!pool.length) return json(res, { ok: true, poolSize: 0, items: [] });
       const picked = pickRandom(pool, count, exclude);
       return json(res, {
         ok: true,
         poolSize: pool.length,
         mode,
-        tag: tagId ? { id: tagId, zh: tagName(tagId) } : null,
+        tags: tagIds.map((id) => ({ id, zh: tagName(id) })),
         items: picked.map(decorate),
       });
     }
@@ -224,7 +229,7 @@ const server = http.createServer(async (req, res) => {
       if (!ids.length) return json(res, { ok: false, error: 'NO_IDS' }, 400);
       const weightRaw = (url.searchParams.get('weights') || '').split(',').map(Number);
       const limit = Math.min(120, Number(url.searchParams.get('limit')) || 24);
-      const tagParam = url.searchParams.get('tag');
+      const tagParam = url.searchParams.get('tags') || url.searchParams.get('tag');
       const minReviews = Number(url.searchParams.get('minReviews')) || 0;
       const maxReviews = Number(url.searchParams.get('maxReviews')) || 0;
 
@@ -243,7 +248,10 @@ const server = http.createServer(async (req, res) => {
       const t0 = Date.now();
       const result = findSimilar(seeds, {
         limit,
-        tagId: tagParam ? Number(tagParam) : null,
+        tagIds: (tagParam || '')
+          .split(',')
+          .map(Number)
+          .filter((n) => Number.isFinite(n) && n > 0),
         minReviews,
         maxReviews,
       });
