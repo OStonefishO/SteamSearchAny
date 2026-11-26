@@ -13,3 +13,8 @@ data/*.tmp-*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 构建产物（可重新生成）
+dist/
+client/site.zip
+client/out/
