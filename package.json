@@ -1,0 +1,16 @@
+{
+  "name": "steam-lighthouse",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Steam 灯塔 —— 随机盲盒发现冷门佳作 + 多游戏加权相似度检索",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "index": "node server/indexer.mjs --pages=6",
+    "index:deep": "node server/indexer.mjs --deep"
+  }
+}

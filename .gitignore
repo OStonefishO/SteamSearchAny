@@ -1,0 +1,15 @@
+# 依赖
+node_modules/
+
+# 语料快照（28MB，只有重建语料库时需要；下载命令见 README）
+data/steam-db.json
+
+# 运行产物
+data/*.log
+data/*.tmp-*
+*.lnk
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
