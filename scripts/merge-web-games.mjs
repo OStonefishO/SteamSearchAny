@@ -30,11 +30,13 @@ async function main() {
   let newTags = 0;
 
   for (const row of web.games || []) {
-    const [id, name, tags, total, pct, labelIdx, year, price, free] = row;
+    const [id, name, tags, total, pct, labelIdx, year, price, free, alt, desc] = row;
     if (corpus.games[id]) continue;
     corpus.games[id] = {
       id,
       name,
+      en: alt || null,
+      desc: desc || null,
       tags: (tags || []).map(([tid, w]) => ({ id: tid, w })),
       rev: total
         ? { total, pct, label: labels[labelIdx] || null, score: 0 }
