@@ -53,6 +53,7 @@ async function build() {
       altOut,
       g.desc ? String(g.desc).slice(0, 220) : null,
       [g.dev ?? null, g.pub ?? null, g.req ? String(g.req).slice(0, 600) : null],
+      g.relTs ? Math.floor(g.relTs) : g.year ? Math.floor(Date.UTC(g.year, 0, 1) / 1000) : null,
     ]);
   }
 
