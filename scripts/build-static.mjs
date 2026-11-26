@@ -144,6 +144,31 @@ async function build() {
     await fs.writeFile(path.join(DIST, 'data', 'changelog.json'), '[]', 'utf8');
   }
 
+  // SEO：robots.txt + sitemap.xml + 社交分享图
+  const SITE = 'https://ostonefisho.github.io/SteamSearchAny-web/';
+  await fs.writeFile(
+    path.join(DIST, 'robots.txt'),
+    ['User-agent: *', 'Allow: /', `Sitemap: ${SITE}sitemap.xml`, ''].join('\n'),
+    'utf8'
+  );
+  const today = new Date().toISOString().slice(0, 10);
+  await fs.writeFile(
+    path.join(DIST, 'sitemap.xml'),
+    [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      `  <url><loc>${SITE}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      '</urlset>',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+  try {
+    await fs.copyFile(path.join(ROOT, 'preview', '0-网址卡片.png'), path.join(DIST, 'og.png'));
+  } catch {
+    /* 没有分享图就跳过 */
+  }
+
   await fs.writeFile(path.join(DIST, '.nojekyll'), '', 'utf8');
 
   // 静态版自己的说明
