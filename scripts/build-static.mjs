@@ -89,7 +89,7 @@ async function build() {
   await fs.writeFile(path.join(DIST, 'data', 'version.json'), JSON.stringify(version), 'utf8');
 
   // 静态资源
-  for (const f of ['app.js', 'style.css', 'local-api.js', 'avatar.jpg']) {
+  for (const f of ['app.js', 'style.css', 'local-api.js', 'avatar.jpg', 'vision.json']) {
     await fs.copyFile(path.join(PUB, f), path.join(DIST, f));
   }
   // 字体目录
