@@ -207,8 +207,10 @@ const server = http.createServer(async (req, res) => {
         .map(Number)
         .filter(Boolean);
       const minYear = Number(url.searchParams.get('minYear')) || null;
+      const minPct = Number(url.searchParams.get('minPct')) || 0;
+      const demoMode = url.searchParams.get('demo') || 'exclude';
 
-      const pool = randomPool({ mode, tagIds, minYear });
+      const pool = randomPool({ mode, tagIds, minYear, minPct, demoMode });
       if (!pool.length) return json(res, { ok: true, poolSize: 0, items: [] });
       const picked = pickRandom(pool, count, exclude);
       return json(res, {
@@ -254,6 +256,8 @@ const server = http.createServer(async (req, res) => {
           .filter((n) => Number.isFinite(n) && n > 0),
         minReviews,
         maxReviews,
+        minPct: Number(url.searchParams.get('minPct')) || 0,
+        demoMode: url.searchParams.get('demo') || 'exclude',
       });
       return json(res, {
         ...result,

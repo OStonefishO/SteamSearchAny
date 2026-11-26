@@ -174,7 +174,7 @@ function percentileRanks(cosMap) {
  * @param {{limit?:number, exclude?:number[], tagId?:number, minReviews?:number, pool?:string}} opts
  */
 export function findSimilar(seeds, opts = {}) {
-  const { limit = 24, exclude = [], tagIds = [], minReviews = 0, maxReviews = 0 } = opts;
+  const { limit = 24, exclude = [], tagIds = [], minReviews = 0, maxReviews = 0, minPct = 0, demoMode = 'exclude' } = opts;
   const wantTags = (tagIds || []).map(Number).filter((n) => n > 0);
   if (!state.ready) return { ok: false, error: 'INDEX_NOT_READY', results: [], seeds: [] };
   if (!seeds.length) return { ok: false, error: 'NO_SEEDS', results: [], seeds: [] };
@@ -203,6 +203,8 @@ export function findSimilar(seeds, opts = {}) {
     }
     if (minReviews && (rec.rev?.total ?? 0) < minReviews) continue;
     if (maxReviews && (rec.rev?.total ?? 0) > maxReviews) continue;
+    if (minPct && (rec.rev?.pct ?? 0) < minPct) continue;
+    if (!passDemo(rec, demoMode)) continue;
 
     const fusion = fusionCos.get(appid) ?? 0;
     const fusionNorm = norm(fusion);
@@ -283,8 +285,16 @@ export function isGem(rec, { minPct = 78, maxReviews = 60000, minReviews = 12 } 
   return total >= minReviews && total <= maxReviews && pct >= minPct;
 }
 
+const DEMO_RE = /(^|[\s:：\-–\[(])(demo|试玩|试玩版|序章|prologue|playtest)/i;
+export const isDemoGame = (g) => DEMO_RE.test(g?.name || '') || DEMO_RE.test(g?.alt || '');
+function passDemo(g, demoMode = 'exclude') {
+  if (demoMode === 'only') return isDemoGame(g);
+  if (demoMode === 'all') return true;
+  return !isDemoGame(g);
+}
+
 /** 盲盒候选池（tagIds 为 AND 语义：必须同时带这些标签） */
-export function randomPool({ mode = 'gem', tagIds = [], minYear = null, maxYear = null } = {}) {
+export function randomPool({ mode = 'gem', tagIds = [], minYear = null, maxYear = null, minPct = 0, demoMode = 'exclude' } = {}) {
   const want = (tagIds || []).map(Number).filter((n) => n > 0);
   const out = [];
   for (const g of state.games.values()) {
@@ -294,6 +304,8 @@ export function randomPool({ mode = 'gem', tagIds = [], minYear = null, maxYear 
     }
     if (minYear && (g.year ?? 0) < minYear) continue;
     if (maxYear && (g.year ?? 9999) > maxYear) continue;
+    if (!passDemo(g, demoMode)) continue;
+    if (minPct && ((g.rev?.pct ?? 0) < minPct || !g.rev?.total)) continue;
     if (mode === 'gem') {
       if (!isGem(g)) continue;
     } else if (mode === 'hidden') {
