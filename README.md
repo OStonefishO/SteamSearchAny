@@ -139,3 +139,12 @@ steam-lighthouse/
 - 评测数千万的大作和 200 条评测的小品要分开排序策略，否则「相似」永远指向爆款
 - Valve 对未定档游戏会返回 2099 这类占位发售年，`scripts/clean-years.mjs` 统一置空
 - 中途换过数据通路：商店搜索结果里其实就带 `data-ds-tagids` 和好评率，但该域名会被 reset，所以主通路换成 API 域
+
+---
+
+## 八、署名
+
+<img src="public/avatar.jpg" width="72" height="72" alt="OStonefishO" style="border-radius:50%"> **make with ♥ love**
+
+by [@OStonefishO](https://github.com/OStonefishO) · 私有仓库 [SteamSearchAny](https://github.com/OStonefishO/SteamSearchAny)
+
