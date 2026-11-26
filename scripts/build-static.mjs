@@ -105,7 +105,9 @@ async function build() {
 
   // index.html：改成相对路径 + 打开静态开关 + 在 app.js 之前挂上本地引擎 + 资源加版本号（防缓存）
   let html = await fs.readFile(path.join(PUB, 'index.html'), 'utf8');
-  const v = encodeURIComponent(version.v);
+  const st2 = await Promise.all(['app.js', 'style.css', 'local-api.js'].map((n) => fs.stat(path.join(DIST, n))));
+  const codeTag = st2.reduce((s, x) => s + x.size, 0).toString(36);
+  const v = encodeURIComponent(${version.v}-);
   html = html
     .replace(/(["'(])\/(style\.css|app\.js|local-api\.js|avatar\.jpg)/g, '$1$2')
     .replace('href="style.css"', `href="style.css?v=${v}"`)
