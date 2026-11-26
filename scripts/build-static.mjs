@@ -152,17 +152,91 @@ async function build() {
     'utf8'
   );
   const today = new Date().toISOString().slice(0, 10);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const STYLE = `<style>body{margin:0;background:#070a0e;color:#eaf2fa;font:15px/1.7 system-ui,-apple-system,"Microsoft YaHei",sans-serif}main{max-width:1040px;margin:0 auto;padding:34px 20px}a{color:#4cc2ff;text-decoration:none}a:hover{text-decoration:underline}h1{font-size:26px;margin:0 0 10px;letter-spacing:-.01em}p.meta{color:#7f95a8;font-size:13px;margin:0 0 18px}ul{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 20px;margin:0}li{padding:7px 0;border-bottom:1px solid #14202c;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}li span{color:#7f95a8;font-size:12px}.cta{display:inline-block;margin-top:26px;padding:10px 18px;border-radius:10px;background:#45bdf7;color:#05161f;font-weight:600}.foot{margin-top:28px;color:#5e7994;font-size:12px}</style>`;
+
+  const rows = games.map((r) => ({
+    id: r[0],
+    name: r[1],
+    total: r[3] || 0,
+    pct: r[4] || 0,
+    year: r[6] || null,
+    tags: (r[2] || []).map((t) => t[0]),
+  }));
+  const byReviews = [...rows].sort((a, b) => b.total - a.total);
+  const tagCount = new Map();
+  for (const g of rows) for (const t of g.tags) tagCount.set(t, (tagCount.get(t) || 0) + 1);
+  const topTags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60);
+  const topGames = byReviews.slice(0, 300);
+
+  const pageHtml = (title, desc, h1, meta, list, backHref) => `<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title><meta name="description" content="${esc(desc)}">
+<meta name="robots" content="index,follow">${STYLE}</head>
+<body><main><h1>${esc(h1)}</h1><p class="meta">${esc(meta)}</p><ul>
+${list.map((g) => `<li><a href="${backHref}?ids=${g.id}">${esc(g.name)}</a> <span>· ${g.year || '—'} · ${g.pct}% 好评 · ${g.total.toLocaleString()} 评</span></li>`).join('\n')}
+</ul><a class="cta" href="${backHref}">→ 打开 Steam 灯塔</a>
+<p class="foot">数据来自 Steam 商店公开接口 · 每日自动更新 · <a href="https://github.com/OStonefishO/SteamSearchAny">开源</a></p>
+</main></body></html>`;
+
+  const urls = [SITE];
+  try {
+    for (const [tid, cnt] of topTags) {
+      const zh = tagDict[tid] || `标签${tid}`;
+      const list = byReviews.filter((g) => g.tags.includes(tid)).slice(0, 60);
+      const dir = path.join(DIST, 'tag', String(tid));
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        path.join(dir, 'index.html'),
+        pageHtml(
+          `${zh} 类游戏推荐（${cnt} 款）· Steam 灯塔`,
+          `Steam 灯塔收录 ${cnt} 款「${zh}」标签的 Steam 游戏，按评测热度排序，含好评率与发售年份，可一键检索相似作品。`,
+          `${zh} 类游戏推荐`,
+          `共 ${cnt} 款带「${zh}」标签的游戏 · 按热度排序`,
+          list,
+          '../../'
+        ),
+        'utf8'
+      );
+      urls.push(`${SITE}tag/${tid}/`);
+    }
+    for (const g of topGames) {
+      const dir = path.join(DIST, 'game', String(g.id));
+      await fs.mkdir(dir, { recursive: true });
+      const related = byReviews.filter((x) => x.id !== g.id && x.tags.some((t) => g.tags.includes(t))).slice(0, 24);
+      await fs.writeFile(
+        path.join(dir, 'index.html'),
+        pageHtml(
+          `${g.name} · 类似游戏推荐 · Steam 灯塔`,
+          `${g.name}（${g.year || '未知年份'}，${g.pct}% 好评 / ${g.total.toLocaleString()} 条评测）的相似作品推荐，基于 Valve 官方标签权重计算。`,
+          g.name,
+          `${g.year || '未知年份'} · ${g.pct}% 好评 · ${g.total.toLocaleString()} 条评测`,
+          related,
+          '../../'
+        ),
+        'utf8'
+      );
+      urls.push(`${SITE}game/${g.id}/`);
+    }
+  } catch (e) {
+    console.warn('入口页生成部分失败：', e.message);
+  }
+
   await fs.writeFile(
     path.join(DIST, 'sitemap.xml'),
     [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-      `  <url><loc>${SITE}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      ...urls.map(
+        (u, i) =>
+          `  <url><loc>${u}</loc><lastmod>${today}</lastmod><changefreq>${i === 0 ? 'daily' : 'weekly'}</changefreq><priority>${i === 0 ? '1.0' : '0.7'}</priority></url>`
+      ),
       '</urlset>',
       '',
     ].join('\n'),
     'utf8'
   );
+  console.log(`入口页：${topTags.length} 个标签页 + ${topGames.length} 个游戏页 · sitemap ${urls.length} 条`);
   try {
     await fs.copyFile(path.join(ROOT, 'preview', '0-网址卡片.png'), path.join(DIST, 'og.png'));
   } catch {
