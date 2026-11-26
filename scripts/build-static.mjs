@@ -72,7 +72,18 @@ async function build() {
   };
   const jsonPath = path.join(DIST, 'data', 'games.json');
   await fs.writeFile(jsonPath, JSON.stringify(payload), 'utf8');
-  const sizeMB = (await fs.stat(jsonPath)).size / 1024 / 1024;
+  const st = await fs.stat(jsonPath);
+  const sizeMB = st.size / 1024 / 1024;
+
+  // 版本指纹：前端先取它，再按版本号拉 games.json，避免浏览器缓存在旧语料上
+  const version = {
+    v: `${payload.built}-${games.length}-${st.size}`,
+    built: payload.built,
+    count: games.length,
+    tags: Object.keys(tagDict).length,
+    bytes: st.size,
+  };
+  await fs.writeFile(path.join(DIST, 'data', 'version.json'), JSON.stringify(version), 'utf8');
 
   // 静态资源
   for (const f of ['app.js', 'style.css', 'local-api.js', 'avatar.jpg']) {
