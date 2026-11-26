@@ -1,5 +1,10 @@
 # Steam 灯塔 · 找到没人注意到的那些游戏
 
+> 🌐 **线上永久地址**：<https://ostonefisho.github.io/SteamSearchAny-web/>
+> （纯静态托管在 GitHub Pages，电脑关机也能访问；相似度计算跑在浏览器里。源码见本私有仓库，产物见 [SteamSearchAny-web](https://github.com/OStonefishO/SteamSearchAny-web)）
+>
+> 🖥 **桌面客户端**：`client/out/SteamSearchAny.exe`（约 1 MB，内嵌整站 + 本地 HTTP 服务，双击即用，不需要装 Node）
+
 一个本地跑的 Steam 游戏发现站，两个核心玩法：
 
 | 玩法 | 做什么 |
