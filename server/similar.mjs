@@ -285,7 +285,7 @@ export function isGem(rec, { minPct = 78, maxReviews = 60000, minReviews = 12 } 
   return total >= minReviews && total <= maxReviews && pct >= minPct;
 }
 
-const DEMO_RE = /(^|[\s:：\-–\[(])(demo|试玩|试玩版|序章|prologue|playtest)/i;
+const DEMO_RE = /(^|[\s:：\-–\[(])demo\b|试玩|序章|prologue|playtest/i;
 export const isDemoGame = (g) => DEMO_RE.test(g?.name || '') || DEMO_RE.test(g?.alt || '');
 function passDemo(g, demoMode = 'exclude') {
   if (demoMode === 'only') return isDemoGame(g);
