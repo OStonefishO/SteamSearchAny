@@ -196,7 +196,7 @@ const server = http.createServer(async (req, res) => {
       const mode = url.searchParams.get('mode') || 'gem';
       const tagParam = url.searchParams.get('tag');
       const tagId = tagParam ? Number(tagParam) : null;
-      const count = Math.min(12, Number(url.searchParams.get('count')) || 1);
+      const count = Math.min(48, Number(url.searchParams.get('count')) || 1);
       const exclude = (url.searchParams.get('exclude') || '')
         .split(',')
         .map(Number)
@@ -223,7 +223,7 @@ const server = http.createServer(async (req, res) => {
         .slice(0, 8);
       if (!ids.length) return json(res, { ok: false, error: 'NO_IDS' }, 400);
       const weightRaw = (url.searchParams.get('weights') || '').split(',').map(Number);
-      const limit = Math.min(60, Number(url.searchParams.get('limit')) || 24);
+      const limit = Math.min(120, Number(url.searchParams.get('limit')) || 24);
       const tagParam = url.searchParams.get('tag');
       const minReviews = Number(url.searchParams.get('minReviews')) || 0;
       const maxReviews = Number(url.searchParams.get('maxReviews')) || 0;

@@ -78,6 +78,16 @@ async function build() {
   for (const f of ['app.js', 'style.css', 'local-api.js', 'avatar.jpg']) {
     await fs.copyFile(path.join(PUB, f), path.join(DIST, f));
   }
+  // 字体目录
+  const fontDir = path.join(PUB, 'fonts');
+  try {
+    await fs.mkdir(path.join(DIST, 'fonts'), { recursive: true });
+    for (const f of await fs.readdir(fontDir)) {
+      await fs.copyFile(path.join(fontDir, f), path.join(DIST, 'fonts', f));
+    }
+  } catch {
+    console.warn('字体目录缺失，跳过（不影响功能，只是西文字体回落系统字体）');
+  }
 
   // index.html：改成相对路径 + 打开静态开关 + 在 app.js 之前挂上本地引擎
   let html = await fs.readFile(path.join(PUB, 'index.html'), 'utf8');
