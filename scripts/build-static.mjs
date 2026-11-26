@@ -52,6 +52,7 @@ async function build() {
       g.free ? 1 : 0,
       altOut,
       g.desc ? String(g.desc).slice(0, 220) : null,
+      [g.dev ?? null, g.pub ?? null, g.req ? String(g.req).slice(0, 600) : null],
     ]);
   }
 
@@ -124,6 +125,15 @@ async function build() {
 
   if (!html.includes('LIGHTHOUSE_STATIC')) throw new Error('index.html 注入失败：找不到 app.js 脚本标签');
   await fs.writeFile(path.join(DIST, 'index.html'), html, 'utf8');
+  // 更新日志（由云端同步生成，放在站点仓库 data/ 下）
+  try {
+    const logSrc = path.join('D:\\综合创作\\SteamSearchAny-web', 'data', 'changelog.json');
+    const logTxt = await fs.readFile(logSrc, 'utf8');
+    await fs.writeFile(path.join(DIST, 'data', 'changelog.json'), logTxt, 'utf8');
+  } catch {
+    await fs.writeFile(path.join(DIST, 'data', 'changelog.json'), '[]', 'utf8');
+  }
+
   await fs.writeFile(path.join(DIST, '.nojekyll'), '', 'utf8');
 
   // 静态版自己的说明
