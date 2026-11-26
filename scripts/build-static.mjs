@@ -127,6 +127,13 @@ async function build() {
 
   if (!html.includes('LIGHTHOUSE_STATIC')) throw new Error('index.html 注入失败：找不到 app.js 脚本标签');
   await fs.writeFile(path.join(DIST, 'index.html'), html, 'utf8');
+  // 封面视觉特征（能抓多少算多少，前端按 data/vision.json 读取）
+  try {
+    await fs.copyFile(path.join(PUB, 'data', 'vision.json'), path.join(DIST, 'data', 'vision.json'));
+  } catch {
+    /* 没有特征库就跳过，画风只做同分微调，不影响主流程 */
+  }
+
   // 更新日志（由云端同步生成，放在站点仓库 data/ 下）
   try {
     const logSrc = path.join('D:\\综合创作\\SteamSearchAny-web', 'data', 'changelog.json');
