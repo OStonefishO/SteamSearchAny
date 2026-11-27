@@ -30,13 +30,28 @@ async function main() {
   let newTags = 0;
 
   for (const row of web.games || []) {
-    const [id, name, tags, total, pct, labelIdx, year, price, free, alt, desc] = row;
-    if (corpus.games[id]) continue;
+    const [id, name, tags, total, pct, labelIdx, year, price, free, alt, desc, extra] = row;
+    if (corpus.games[id]) {
+      // 云端补过的系统需求 / 截图，回写到本地语料，避免下次本地构建丢掉
+      const g = corpus.games[id];
+      if (Array.isArray(extra)) {
+        if (!g.req && extra[2]) g.req = extra[2];
+        if (!g.shots && Array.isArray(extra[3]) && extra[3].length) g.shots = extra[3];
+        if (!g.dev && extra[0]) g.dev = extra[0];
+        if (!g.pub && extra[1]) g.pub = extra[1];
+      }
+      if (!g.desc && desc) g.desc = desc;
+      continue;
+    }
     corpus.games[id] = {
       id,
       name,
       en: alt || null,
       desc: desc || null,
+      req: Array.isArray(extra) ? extra[2] || null : null,
+      shots: Array.isArray(extra) && Array.isArray(extra[3]) ? extra[3] : null,
+      dev: Array.isArray(extra) ? extra[0] || null : null,
+      pub: Array.isArray(extra) ? extra[1] || null : null,
       tags: (tags || []).map(([tid, w]) => ({ id: tid, w })),
       rev: total
         ? { total, pct, label: labels[labelIdx] || null, score: 0 }

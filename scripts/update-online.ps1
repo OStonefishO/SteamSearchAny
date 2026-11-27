@@ -14,6 +14,16 @@ function Log($msg) {
 
 Log '=== 开始增量更新 ==='
 
+# 0) 把本机的 agent 记忆日志同步进仓库，方便以后读取
+try {
+  $mem = Get-ChildItem 'D:\\AiMemory' -Recurse -Filter '*steamsearchany*.md' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($mem) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $root 'notes') | Out-Null
+    Copy-Item $mem.FullName (Join-Path $root 'notes\\agent-log.md') -Force
+    Log '已同步 notes/agent-log.md'
+  }
+} catch { Log '同步 agent 日志失败（忽略）' }
+
 # 0) 先把云端（GitHub Actions）已经加的拉下来，避免本地构建把它们覆盖掉
 if (Test-Path $web) {
   Push-Location $web

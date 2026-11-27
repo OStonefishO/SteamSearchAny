@@ -18,3 +18,6 @@ desktop.ini
 dist/
 client/site.zip
 client/out/
+
+# 构建产物（站点仓库里有一份）
+docs/
