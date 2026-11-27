@@ -1,3 +1,5 @@
+[English](./README.en.md) | **简体中文**
+
 # Steam 灯塔 · Steam Lighthouse
 
 > **在线使用**：<https://ostonefisho.github.io/SteamSearchAny-web/>
