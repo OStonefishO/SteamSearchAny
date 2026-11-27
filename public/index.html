@@ -84,6 +84,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-view="random" role="tab">盲盒发现</button>
     <button class="tab" data-view="similar" role="tab">相似追踪</button>
+    <button class="tab" data-view="events" role="tab">Steam 现场</button>
   </nav>
 
   <button class="icon-btn" id="uiBtn" title="显示设置" aria-haspopup="true" aria-expanded="false">⚙</button>
@@ -245,7 +246,17 @@
     <div style="display:flex;justify-content:center;margin-top:22px">
       <button class="btn" id="loadMore" hidden>加载更多</button>
     </div>
+  </section>  <!-- ================= Steam 现场 ================= -->
+  <section class="view hidden" id="view-events">
+    <div class="view-head">
+      <div>
+        <h2>Steam 现场</h2>
+        <p id="eventsHint">每天从 Steam 抓一次：正在特惠、刚上架、即将发售 —— 都按我们的冷门指数重新排一遍。</p>
+      </div>
+    </div>
+    <div id="eventsBody"></div>
   </section>
+
 </main>
 
 <footer class="foot">

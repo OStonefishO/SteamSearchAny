@@ -135,6 +135,13 @@ async function build() {
     /* 没有特征库就跳过，画风只做同分微调，不影响主流程 */
   }
 
+  // Steam 现场数据（云端抓取）
+  try {
+    await fs.copyFile(path.join('D:\\综合创作\\SteamSearchAny-web', 'data', 'events.json'), path.join(DIST, 'data', 'events.json'));
+  } catch {
+    /* 没有现场数据时页面会显示占位 */
+  }
+
   // 更新日志（由云端同步生成，放在站点仓库 data/ 下）
   try {
     const logSrc = path.join('D:\\综合创作\\SteamSearchAny-web', 'data', 'changelog.json');
