@@ -1,7 +1,9 @@
-// Steam 灯塔 · 桌面客户端
-// 把内置的静态站点释放到本地，用一个内嵌的极简 HTTP 服务托管，然后开浏览器。
-// 不依赖 Node / 浏览器插件 / 管理员权限（用 TcpListener，不用 HttpListener，避开 URL ACL）。
+// Steam 灯塔 · 桌面客户端（独立窗口版）
+// 内嵌静态站在本地起服务，然后用 Edge/Chrome 的 app 模式开一个无地址栏、无标签页的独立窗口。
+// 关掉那个窗口 → 服务停止 → 进程退出。不依赖 Node、不需要管理员权限。
 using System;
+using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -10,8 +12,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using System.Drawing;
-using System.Diagnostics;
 
 namespace SteamLighthouse
 {
@@ -20,6 +20,7 @@ namespace SteamLighthouse
         internal static string SiteDir;
         internal static int Port;
         internal static string BaseUrl;
+        internal static string DataRoot;
 
         [STAThread]
         private static void Main()
@@ -28,11 +29,43 @@ namespace SteamLighthouse
             Application.SetCompatibleTextRenderingDefault(false);
             try
             {
+                DataRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SteamLighthouse");
+                Directory.CreateDirectory(DataRoot);
+
                 SiteDir = ExtractSite();
                 Port = FindFreePort(8765);
                 BaseUrl = "http://127.0.0.1:" + Port + "/";
                 StartServer(SiteDir, Port);
-                Application.Run(new ClientForm());
+
+                string browser = FindBrowser();
+                if (browser == null)
+                {
+                    // 没有 Edge/Chrome 就退回默认浏览器
+                    Process.Start(BaseUrl);
+                    Application.Run(new FallbackForm());
+                    return;
+                }
+
+                string profile = Path.Combine(DataRoot, "profile");
+                Directory.CreateDirectory(profile);
+
+                ProcessStartInfo psi = new ProcessStartInfo(browser);
+                psi.Arguments =
+                    "--app=" + BaseUrl +
+                    " --window-size=1280,820" +
+                    " --window-position=120,60" +
+                    " --user-data-dir=\"" + profile + "\"" +
+                    " --no-first-run --no-default-browser-check" +
+                    " --disable-features=Translate,CalculateNativeWinOcclusion";
+                psi.UseShellExecute = false;
+
+                Process app = Process.Start(psi);
+                if (app == null) throw new Exception("无法启动浏览器窗口");
+
+                // 等窗口出现后收起来：主进程只做服务宿主，不显示自己的界面
+                Application.Run(new HostForm(app));
             }
             catch (Exception ex)
             {
@@ -40,7 +73,20 @@ namespace SteamLighthouse
             }
         }
 
-        // 把内嵌的 site.zip 解到 %LOCALAPPDATA%，按包长做版本号，升级后自动重解
+        private static string FindBrowser()
+        {
+            string[] candidates = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Google\Chrome\Application\chrome.exe")
+            };
+            foreach (string c in candidates) if (File.Exists(c)) return c;
+            return null;
+        }
+
         private static string ExtractSite()
         {
             Assembly asm = Assembly.GetExecutingAssembly();
@@ -48,18 +94,14 @@ namespace SteamLighthouse
             if (zipStream == null) throw new Exception("客户端资源缺失（site.zip 没有打包进来）");
 
             long len = zipStream.Length;
-            string root = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SteamLighthouse");
-            string dir = Path.Combine(root, "site-" + len.ToString());
+            string dir = Path.Combine(DataRoot, "site-" + len.ToString());
             string marker = Path.Combine(dir, ".ready");
 
             if (!File.Exists(marker))
             {
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
                 Directory.CreateDirectory(dir);
-                string tmpZip = Path.Combine(root, "site.zip");
-                Directory.CreateDirectory(root);
+                string tmpZip = Path.Combine(DataRoot, "site.zip");
                 using (FileStream fs = File.Create(tmpZip))
                 {
                     byte[] buf = new byte[81920];
@@ -80,9 +122,7 @@ namespace SteamLighthouse
                 try
                 {
                     TcpListener probe = new TcpListener(IPAddress.Loopback, p);
-                    probe.Start();
-                    probe.Stop();
-                    return p;
+                    probe.Start(); probe.Stop(); return p;
                 }
                 catch { }
             }
@@ -179,85 +219,81 @@ namespace SteamLighthouse
                 case ".svg": return "image/svg+xml";
                 case ".ico": return "image/x-icon";
                 case ".txt": return "text/plain; charset=utf-8";
+                case ".woff2": return "font/woff2";
                 default: return "application/octet-stream";
             }
         }
     }
 
-    internal class ClientForm : Form
+    /// 无界面宿主：应用窗口关闭后结束进程
+    internal class HostForm : Form
     {
-        private readonly TextBox _url;
-        private readonly Label _status;
+        private readonly Process _app;
+        private readonly System.Windows.Forms.Timer _timer;
 
-        public ClientForm()
+        public HostForm(Process app)
+        {
+            _app = app;
+            ShowInTaskbar = false;
+            WindowState = FormWindowState.Minimized;
+            Opacity = 0;
+            FormBorderStyle = FormBorderStyle.None;
+            Size = new Size(1, 1);
+            Load += delegate { Hide(); };
+
+            _timer = new System.Windows.Forms.Timer();
+            _timer.Interval = 1000;
+            _timer.Tick += delegate
+            {
+                try
+                {
+                    if (_app.HasExited) { _timer.Stop(); Application.Exit(); }
+                }
+                catch { _timer.Stop(); Application.Exit(); }
+            };
+            _timer.Start();
+        }
+    }
+
+    /// 找不到 Edge/Chrome 时的兜底窗口
+    internal class FallbackForm : Form
+    {
+        public FallbackForm()
         {
             Text = "Steam 灯塔";
-            ClientSize = new Size(470, 210);
+            ClientSize = new Size(560, 200);
             StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
             BackColor = Color.FromArgb(10, 17, 26);
             ForeColor = Color.FromArgb(233, 241, 250);
             Font = new Font("Microsoft YaHei UI", 9f);
 
-            Label title = new Label();
-            title.Text = "Steam 灯塔";
-            title.Font = new Font("Microsoft YaHei UI", 16f, FontStyle.Bold);
-            title.ForeColor = Color.FromArgb(102, 192, 244);
-            title.SetBounds(22, 18, 220, 34);
-            Controls.Add(title);
+            Label t = new Label();
+            t.Text = "已用默认浏览器打开 Steam 灯塔";
+            t.Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Bold);
+            t.ForeColor = Color.FromArgb(102, 192, 244);
+            t.SetBounds(24, 24, 500, 30);
+            Controls.Add(t);
 
-            Label sub = new Label();
-            sub.Text = "本地服务已启动 · 关闭窗口即退出";
-            sub.ForeColor = Color.FromArgb(139, 163, 187);
-            sub.SetBounds(24, 54, 300, 20);
-            Controls.Add(sub);
-
-            _url = new TextBox();
-            _url.Text = Program.BaseUrl;
-            _url.ReadOnly = true;
-            _url.SetBounds(24, 82, 300, 26);
-            _url.BackColor = Color.FromArgb(18, 28, 40);
-            _url.ForeColor = Color.FromArgb(233, 241, 250);
-            _url.BorderStyle = BorderStyle.FixedSingle;
-            Controls.Add(_url);
+            TextBox url = new TextBox();
+            url.Text = Program.BaseUrl;
+            url.ReadOnly = true;
+            url.SetBounds(24, 70, 380, 26);
+            url.BackColor = Color.FromArgb(18, 28, 40);
+            url.ForeColor = Color.FromArgb(233, 241, 250);
+            Controls.Add(url);
 
             Button open = new Button();
-            open.Text = "打开网页";
-            open.SetBounds(334, 80, 112, 30);
-            open.BackColor = Color.FromArgb(126, 208, 255);
-            open.ForeColor = Color.FromArgb(4, 33, 47);
+            open.Text = "重新打开";
+            open.SetBounds(414, 69, 110, 28);
             open.FlatStyle = FlatStyle.Flat;
             open.Click += delegate { Process.Start(Program.BaseUrl); };
             Controls.Add(open);
 
-            Button copy = new Button();
-            copy.Text = "复制链接";
-            copy.SetBounds(24, 126, 96, 30);
-            copy.FlatStyle = FlatStyle.Flat;
-            copy.ForeColor = Color.FromArgb(200, 231, 251);
-            copy.Click += delegate
-            {
-                try { Clipboard.SetText(Program.BaseUrl); _status.Text = "链接已复制"; }
-                catch { _status.Text = "复制失败，请手动选中"; }
-            };
-            Controls.Add(copy);
-
-            Button quit = new Button();
-            quit.Text = "退出";
-            quit.SetBounds(350, 126, 96, 30);
-            quit.FlatStyle = FlatStyle.Flat;
-            quit.ForeColor = Color.FromArgb(200, 231, 251);
-            quit.Click += delegate { Close(); };
-            Controls.Add(quit);
-
-            _status = new Label();
-            _status.Text = "数据日期见页脚 · make with ♥ love";
-            _status.ForeColor = Color.FromArgb(94, 121, 148);
-            _status.SetBounds(24, 170, 400, 20);
-            Controls.Add(_status);
-
-            Process.Start(Program.BaseUrl); // 启动就开浏览器
+            Label tip = new Label();
+            tip.Text = "关闭此窗口即退出服务";
+            tip.ForeColor = Color.FromArgb(120, 145, 170);
+            tip.SetBounds(24, 120, 400, 20);
+            Controls.Add(tip);
         }
     }
 }
