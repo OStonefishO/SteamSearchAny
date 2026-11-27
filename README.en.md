@@ -1,5 +1,9 @@
 # Steam Lighthouse · Steam 灯塔
 
+[![Live](https://img.shields.io/badge/live-ostonefisho.github.io-45bdf7)](https://ostonefisho.github.io/SteamSearchAny-web/)
+[![Stars](https://img.shields.io/github/stars/OStonefishO/SteamSearchAny?style=social)](https://github.com/OStonefishO/SteamSearchAny/stargazers)
+[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![Games](https://img.shields.io/badge/corpus-11%2C700%2B%20games-blueviolet)](#data)
 **English** | [简体中文](./README.md)
 
 > **Live site**: <https://ostonefisho.github.io/SteamSearchAny-web/>

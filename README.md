@@ -1,5 +1,9 @@
 [English](./README.en.md) | **简体中文**
 
+[![Live](https://img.shields.io/badge/live-ostonefisho.github.io-45bdf7)](https://ostonefisho.github.io/SteamSearchAny-web/)
+[![Stars](https://img.shields.io/github/stars/OStonefishO/SteamSearchAny?style=social)](https://github.com/OStonefishO/SteamSearchAny/stargazers)
+[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![Games](https://img.shields.io/badge/%E8%AF%AD%E6%96%99-11%2C700%2B%20%E6%AC%BE-blueviolet)](#数据)
 # Steam 灯塔 · Steam Lighthouse
 
 > **在线使用**：<https://ostonefisho.github.io/SteamSearchAny-web/>
